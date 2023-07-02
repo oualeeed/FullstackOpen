@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useEffect } from 'react'
 import personService from './services/persons'
+import './app.css'
 
 const Filter = ({filter, handleChangeFilter}) =>
  <div>
@@ -24,15 +25,16 @@ const PersonForm = ({addPerson,newName,setNewName,newNumber,setNumber ,handleCha
 
 const Persons = ({personsToShow,deleteSomeone}) => <div>{personsToShow.map(person => <p key={person.name}>{person.name} {person.number} <button onClick={deleteSomeone(person)}>delete</button> </p> )} </div>
 
+const Notification = ({notification}) => notification
 
-
-const App = ({data}) => {
+const App = () => {
 
   const [persons, setPersons] = useState([])
   const [newName, setNewName]  = useState('')
   const [newNumber, setNumber] = useState('')
   const [filter, setFilter]    = useState('')
   const [personsToShow, setPersonsToShow] = useState(persons)
+  const [notification , setNotification ] = useState(null)
   
   useEffect(() => {    	
 		personService  
@@ -63,6 +65,7 @@ const App = ({data}) => {
 
   } 
 
+  
 
   const addPerson = (event) => {
     event.preventDefault()
@@ -74,8 +77,23 @@ const App = ({data}) => {
 
     const dude = persons.find(p =>equal(p , newPerson))
 
+    // the person is already in the db , prceed to update ?
     if ( !(dude === undefined || dude === null) ) {
-      alert(`${newName} is already added to phonebook`)
+      if ( !window.confirm(`${dude.name} is already in phonebook, replace the old number with a new one ?`)) return 
+      personService
+        .update(dude.id , newPerson)
+        .then(
+          response => {
+            const personsCopy = persons.map(person => person.id === dude.id ? {...dude , number : newPerson.number } : person )
+            setPersons(personsCopy)
+            setPersonsToShow(personsCopy)
+            notify(`${newPerson.name}'s number updated.` , 'notification')
+            setNewName('')
+            setNumber('')
+          }
+        ).catch(
+          error => notify(`information for ${dude.name} haas already been removed from server.` , 'error' )
+        )
       return 
     }
 
@@ -86,7 +104,16 @@ const App = ({data}) => {
           const personsCopy = [...persons].concat(response)
           setPersonsToShow(personsCopy)
           setPersons(personsCopy)
+          notify(`${newPerson.name} is added.` , 'notfication')
+          // setNotification(`${newPerson.name} is added.`)
+          // setTimeout(
+          //   ()=>setNotification(null),3000
+          // )
+          setNewName('')
+          setNumber('')
         }
+      ).catch(
+        error => notify('Sorry an error ocuured. Try to refresh and try a gain please' , 'error' )
       )
       
   }
@@ -117,13 +144,23 @@ const App = ({data}) => {
           setPersons(personsCopy)
           setPersonsToShow(personsCopy)
         }
+      ).catch(
+        error => notify('Sorry an error ocuured. Try to refresh and try a gain please' , 'error' )
       )
   }
 
+  const notify = (message , typeOfNotification) =>{
+    const notif = ( <div className={typeOfNotification}> {message}</div> )
+    setNotification(notif)
+    setTimeout(
+      ()=>setNotification(null)
+      ,3000)
+  }
+  
   return (
     <div>
       <h2>Phonebook</h2>
-      
+      <Notification notification={notification} />
       <Filter filter={filter} handleChangeFilter={handleChangeFilter} />
       
       <h2>Add a new</h2>
@@ -144,21 +181,3 @@ const App = ({data}) => {
 }
 
 export default App
-
-
- /* {
-      "name": "Ada Lovelace",
-      "number": "39-44-5323523",
-      "id": 2
-    },
-    {
-      "name": "Dan Abramov",
-      "number": "12-43-234345",
-      "id": 3
-    },
-    {
-      "name": "Mary Poppendieck",
-      "number": "39-23-6423122",
-      "id": 4
-    }
-    */ 
